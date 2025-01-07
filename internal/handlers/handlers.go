@@ -12,7 +12,17 @@ func HomePage(c *gin.Context) {
 }
 
 func AnalyzePage(c *gin.Context) {
+    var req struct {
+        URL string `json:"url" binding:"required"`
+    }
+
+    if err := c.ShouldBindJSON(&req); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input. Please provide a valid URL."})
+        return
+    }
+
     c.JSON(http.StatusOK, gin.H{
-        "message": "Analyzing page testign",
+        "message": "Received URL for analysis",
+        "url":     req.URL,
     })
 }
