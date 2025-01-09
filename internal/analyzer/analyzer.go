@@ -1,25 +1,49 @@
-package handlers
+package analyzer
 
 import (
+    "errors"
     "net/http"
-    "webpage-analyzer/internal/utils"
-    "github.com/gin-gonic/gin"
+    "golang.org/x/net/html"
 )
 
-func AnalyzePage(c *gin.Context) {
-    var req struct {
-        URL string `json:"url" binding:"required"`
+type AnalysisResult struct {
+    Title string `json:"title"`
+}
+
+func Analyze(url string) (*AnalysisResult, error) {
+    resp, err := http.Get(url)
+    if err != nil {
+        return nil, errors.New("unable to fetch the URL")
+    }
+    defer resp.Body.Close()
+
+    if resp.StatusCode != http.StatusOK {
+        return nil, errors.New("non-success HTTP status received: " + http.StatusText(resp.StatusCode))
     }
 
-    if err := c.ShouldBindJSON(&req); err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input. Please provide a valid URL."})
-        return
+    doc, err := html.Parse(resp.Body)
+    if err != nil {
+        return nil, errors.New("error parsing HTML document")
     }
 
-    if !utils.IsValidURL(req.URL) {
-        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid URL format."})
-        return
-    }
+    title := extractTitle(doc)
 
-    c.JSON(http.StatusOK, gin.H{"message": "URL is valid", "url": req.URL})
+    return &AnalysisResult{
+        Title: title,
+    }, nil
+}
+
+func extractTitle(doc *html.Node) string {
+    var title string
+    var findTitle func(*html.Node)
+    findTitle = func(n *html.Node) {
+        if n.Type == html.ElementNode && n.Data == "title" && n.FirstChild != nil {
+            title = n.FirstChild.Data
+        }
+        for c := n.FirstChild; c != nil; c = c.NextSibling {
+            findTitle(c)
+        }
+    }
+    findTitle(doc)
+    return title
 }
