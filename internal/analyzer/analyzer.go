@@ -3,21 +3,14 @@ package analyzer
 import (
 	"errors"
 	"net/http"
+	"webpage-analyzer/internal/models"
+	"webpage-analyzer/internal/services"
 	"webpage-analyzer/internal/utils"
+
 	"golang.org/x/net/html"
 )
 
-type AnalysisResult struct {
-	HTMLVersion       string         `json:"html_version"`
-	Title             string         `json:"title"`
-	HeadingCounts     map[string]int `json:"heading_counts"`
-	InternalLinks     int            `json:"internal_links"`
-	ExternalLinks     int            `json:"external_links"`
-	InaccessibleLinks int            `json:"inaccessible_links"`
-	HasLoginForm      bool           `json:"has_login_form"`
-}
-
-func Analyze(url string, client http.Client) (*AnalysisResult, error) {
+func Analyze(url string, client services.HTTPClient) (*models.AnalysisResult, error) {
 	resp, err := client.Get(url)
 	if err != nil {
 		return nil, errors.New("unable to fetch the URL")
@@ -33,15 +26,18 @@ func Analyze(url string, client http.Client) (*AnalysisResult, error) {
 		return nil, errors.New("error parsing HTML document")
 	}
 
-	result := &AnalysisResult{
-		HeadingCounts: make(map[string]int),
+	result := &models.AnalysisResult{
+		HTMLVersion: utils.DetectHTMLVersion(doc),
+		Title:       utils.ExtractTitle(doc),
+		Headings:    utils.CountHeadings(doc),
 	}
 
-	utils.ExtractHTMLVersion(doc, result)
-	utils.ExtractTitle(doc, result)
-	utils.CountHeadings(doc, result)
-	utils.AnalyzeLinks(url, doc, result)
-	utils.CheckForLoginForm(doc, result)
+	internal, external, inaccessible := utils.AnalyzeLinks(url, doc)
+	result.InternalLinks = internal
+	result.ExternalLinks = external
+	result.InaccessibleLinks = inaccessible
+
+	result.HasLoginForm = utils.CheckForLoginForm(doc)
 
 	return result, nil
 }

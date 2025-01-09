@@ -3,56 +3,63 @@ package utils
 import (
 	"net/url"
 	"strings"
-	"webpage-analyzer/internal/analyzer"
 
 	"golang.org/x/net/html"
 )
 
-func ExtractHTMLVersion(doc *html.Node, result *analyzer.AnalysisResult) {
-	result.HTMLVersion = "HTML5"
+func DetectHTMLVersion(doc *html.Node) string {
+	// Assume HTML5 by default
+	return "HTML5"
 }
 
-func ExtractTitle(doc *html.Node, result *analyzer.AnalysisResult) {
+func ExtractTitle(doc *html.Node) string {
+	var title string
 	var findTitle func(*html.Node)
 	findTitle = func(n *html.Node) {
 		if n.Type == html.ElementNode && n.Data == "title" && n.FirstChild != nil {
-			result.Title = n.FirstChild.Data
+			title = n.FirstChild.Data
 		}
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
 			findTitle(c)
 		}
 	}
 	findTitle(doc)
+	return title
 }
 
-func CountHeadings(doc *html.Node, result *analyzer.AnalysisResult) {
-	var countHeadings func(*html.Node)
-	countHeadings = func(n *html.Node) {
-		if n.Type == html.ElementNode && strings.HasPrefix(n.Data, "h") && len(n.Data) == 2 {
-			result.HeadingCounts[n.Data]++
+func CountHeadings(doc *html.Node) map[string]int {
+	counts := make(map[string]int)
+	var count func(*html.Node)
+	count = func(n *html.Node) {
+		if n.Type == html.ElementNode && len(n.Data) == 2 && n.Data[0] == 'h' {
+			counts[n.Data]++
 		}
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			countHeadings(c)
+			count(c)
 		}
 	}
-	countHeadings(doc)
+	count(doc)
+	return counts
 }
 
-func AnalyzeLinks(baseURL string, doc *html.Node, result *analyzer.AnalysisResult) {
-	var countLinks func(*html.Node)
-	parsedBaseURL, _ := url.Parse(baseURL)
+func AnalyzeLinks(baseURL string, doc *html.Node) (int, int, int) {
+	internal, external, inaccessible := 0, 0, 0
+	base, _ := url.Parse(baseURL)
 
+	var countLinks func(*html.Node)
 	countLinks = func(n *html.Node) {
 		if n.Type == html.ElementNode && n.Data == "a" {
 			for _, attr := range n.Attr {
 				if attr.Key == "href" {
-					linkURL, err := url.Parse(attr.Val)
+					hrefURL, err := url.Parse(attr.Val)
 					if err == nil {
-						if linkURL.Host == "" || linkURL.Host == parsedBaseURL.Host {
-							result.InternalLinks++
+						if hrefURL.Host == "" || hrefURL.Host == base.Host {
+							internal++
 						} else {
-							result.ExternalLinks++
+							external++
 						}
+					} else {
+						inaccessible++
 					}
 				}
 			}
@@ -62,22 +69,25 @@ func AnalyzeLinks(baseURL string, doc *html.Node, result *analyzer.AnalysisResul
 		}
 	}
 	countLinks(doc)
+	return internal, external, inaccessible
 }
 
-func CheckForLoginForm(doc *html.Node, result *analyzer.AnalysisResult) {
-	var findLoginForm func(*html.Node)
-	findLoginForm = func(n *html.Node) {
+func CheckForLoginForm(doc *html.Node) bool {
+	var found bool
+	var checkForm func(*html.Node)
+	checkForm = func(n *html.Node) {
 		if n.Type == html.ElementNode && n.Data == "input" {
 			for _, attr := range n.Attr {
 				if attr.Key == "type" && attr.Val == "password" {
-					result.HasLoginForm = true
+					found = true
 					return
 				}
 			}
 		}
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			findLoginForm(c)
+			checkForm(c)
 		}
 	}
-	findLoginForm(doc)
+	checkForm(doc)
+	return found
 }
