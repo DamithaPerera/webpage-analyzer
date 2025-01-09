@@ -2,9 +2,9 @@ import React from "react";
 import { Navbar, Container } from "react-bootstrap";
 
 const Header = () => (
-  <Navbar bg="dark" variant="dark">
+  <Navbar bg="dark" variant="dark" expand="lg" sticky="top">
     <Container>
-      <Navbar.Brand>Web Page Analyzer</Navbar.Brand>
+      <Navbar.Brand href="/">🌐 Web Page Analyzer</Navbar.Brand>
     </Container>
   </Navbar>
 );

@@ -6,7 +6,7 @@ import HomePage from "./pages/HomePage";
 const App = () => (
   <>
     <Header />
-    <main className="min-vh-100">
+    <main className="min-vh-100 py-4">
       <HomePage />
     </main>
     <Footer />
