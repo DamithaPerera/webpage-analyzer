@@ -2,7 +2,6 @@ package utils
 
 import (
 	"net/url"
-	"strings"
 
 	"golang.org/x/net/html"
 )
