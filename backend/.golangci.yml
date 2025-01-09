@@ -1,0 +1,24 @@
+run:
+  timeout: 5m
+  modules-download-mode: readonly
+
+linters:
+  enable:
+    - govet             # Reports suspicious constructs
+    - golint            # Reports style issues
+    - staticcheck       # Finds bugs and performance issues
+    - gocyclo           # Warns about functions with high complexity
+    - errcheck          # Ensures error return values are checked
+    - unused            # Finds unused code
+    - deadcode          # Finds unused/dead code
+
+linters-settings:
+  gocyclo:
+    min-complexity: 10  # Warn for functions with cyclomatic complexity >= 10
+
+issues:
+  exclude-rules:
+    - linters:
+        - gocyclo
+      text: "function is too complex"
+  exclude-use-default: false
