@@ -3,6 +3,7 @@ package main
 import (
     "github.com/gin-contrib/cors"
     "github.com/gin-gonic/gin"
+    "github.com/penglongli/gin-metrics/ginmetrics"
     "webpage-analyzer/internal/handlers"
     "webpage-analyzer/internal/utils"
 )
@@ -19,6 +20,11 @@ func main() {
         AllowHeaders:     []string{"Content-Type"},
         AllowCredentials: true,
     }))
+
+     // Setup Prometheus metrics
+     m := ginmetrics.GetMonitor()
+     m.SetMetricPath("/metrics") // Expose metrics at /metrics endpoint
+     m.Use(r)
 
     r.GET("/", handlers.HomePage)
     r.POST("/analyze", handlers.AnalyzePage)
