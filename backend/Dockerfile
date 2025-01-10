@@ -1,3 +1,4 @@
+# Build stage
 FROM golang:1.23.3 AS builder
 
 WORKDIR /app
@@ -9,7 +10,7 @@ COPY backend/go.mod backend/go.sum ./
 RUN go mod download
 
 # Copy the entire backend source code
-COPY backend/ .
+COPY backend/ ./
 
 # Set working directory to cmd folder
 WORKDIR /app/cmd
@@ -17,11 +18,19 @@ WORKDIR /app/cmd
 # Build the Go binary
 RUN go build -o /app/main .
 
-# Use a lightweight runtime image
+# Runtime stage
 FROM debian:bookworm-slim
-WORKDIR /app
-COPY --from=builder /app/main .
-RUN apt-get update && apt-get install -y libc6 && rm -rf /var/lib/apt/lists/*
 
+WORKDIR /app
+
+# Copy the built binary from the builder stage
+COPY --from=builder /app/main .
+
+# Install tools and libraries for runtime
+RUN apt-get update && apt-get install -y libc6 curl && rm -rf /var/lib/apt/lists/*
+
+# Expose the HTTP port
 EXPOSE 8080
+
+# Command to run the application
 CMD ["./main"]
