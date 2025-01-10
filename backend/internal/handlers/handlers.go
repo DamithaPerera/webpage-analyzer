@@ -9,6 +9,7 @@ import (
     "github.com/gin-gonic/gin"
 )
 
+// HomePage handles the root endpoint and provides a welcome message.
 func HomePage(c *gin.Context) {
     utils.Logger.Info("HomePage endpoint accessed")
     c.JSON(http.StatusOK, gin.H{
@@ -16,6 +17,7 @@ func HomePage(c *gin.Context) {
     })
 }
 
+// AnalyzePage handles the /analyze endpoint to analyze a given webpage.
 func AnalyzePage(c *gin.Context) {
     utils.Logger.Info("AnalyzePage endpoint accessed")
 

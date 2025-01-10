@@ -10,6 +10,7 @@ import (
 	"golang.org/x/net/html"
 )
 
+// Analyze fetches and analyzes a webpage, returning its metadata.
 func Analyze(url string, client services.HTTPClient) (*models.AnalysisResult, error) {
 	resp, err := client.Get(url)
 	if err != nil {

@@ -11,6 +11,7 @@ func DetectHTMLVersion(doc *html.Node) string {
 	return "HTML5"
 }
 
+//finds and returns the title of the document
 func ExtractTitle(doc *html.Node) string {
 	var title string
 	var findTitle func(*html.Node)
@@ -26,6 +27,7 @@ func ExtractTitle(doc *html.Node) string {
 	return title
 }
 
+//counts the occurrences of heading tags
 func CountHeadings(doc *html.Node) map[string]int {
 	counts := make(map[string]int)
 	var count func(*html.Node)
@@ -41,6 +43,7 @@ func CountHeadings(doc *html.Node) map[string]int {
 	return counts
 }
 
+//analyzes the links in the document and classifies them as internal, external, or inaccessible
 func AnalyzeLinks(baseURL string, doc *html.Node) (int, int, int) {
 	internal, external, inaccessible := 0, 0, 0
 	base, _ := url.Parse(baseURL)
@@ -71,6 +74,7 @@ func AnalyzeLinks(baseURL string, doc *html.Node) (int, int, int) {
 	return internal, external, inaccessible
 }
 
+//checks if the document contains a login form with a password field
 func CheckForLoginForm(doc *html.Node) bool {
 	var found bool
 	var checkForm func(*html.Node)

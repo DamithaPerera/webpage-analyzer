@@ -1,5 +1,6 @@
 package models
 
+// AnalysisResult represents the analysis result for a webpage
 type AnalysisResult struct {
 	HTMLVersion       string         `json:"html_version"`
 	Title             string         `json:"title"`
