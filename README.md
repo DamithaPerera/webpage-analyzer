@@ -72,7 +72,6 @@ Webpage Analyzer is a project designed to analyze webpages by extracting informa
 - **Important:** This endpoint is **only accessible from the backend** and is not integrated into the frontend.
 
 ---
----
 
 ## Setup
 
@@ -175,12 +174,6 @@ networks:
 - **Backend API not accessible:** Ensure the backend container is running and listening on port `8080`.
 - **Frontend not accessible:** Ensure the frontend container is running and Nginx is serving content on port `3000`.
 - **Docker networking issues:** Try restarting Docker or clearing stale containers with `docker-compose down`.
-
----
-
-## License
-
-This project is licensed under the MIT License. See the `LICENSE` file for details.
 
 ---
 
