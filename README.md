@@ -1,6 +1,6 @@
 # Webpage Analyzer
 
-Webpage Analyzer is a project designed to analyze webpages by extracting information such as HTML version, titles, headings, and other metadata. This project includes both backend and frontend implementations running in Docker containers.
+Webpage Analyzer is a project designed to analyze webpages by extracting information such as HTML version, titles, headings, accessibility metadata, and other insights. This project includes both backend and frontend implementations running in Docker containers.
 
 ## Project Structure
 
@@ -30,14 +30,15 @@ Webpage Analyzer is a project designed to analyze webpages by extracting informa
 
 ### Endpoints
 
-#### Home Page
+#### Health Check
 
-- **Endpoint:** `GET /`
-- **Description:** Displays a welcome message.
+- **Endpoint:** `GET /health`
+- **Description:** Provides system health information and application metadata.
 - **Response:**
   ```json
   {
-      "message": "Welcome to the Web Page Analyzer. Use POST /analyze to analyze a webpage."
+      "status": "OK",
+      "version": "Web Page Analyzer service is running."
   }
   ```
 
@@ -62,14 +63,41 @@ Webpage Analyzer is a project designed to analyze webpages by extracting informa
       "internal_links": 2,
       "external_links": 5,
       "inaccessible_links": 1,
-      "has_login_form": false
+      "has_login_form": false,
+      "missing_labels": 0,
+      "invalid_href": 0
   }
   ```
+
 #### Prometheus Metrics (Backend Only)
 
 - **Endpoint:** `GET /metrics`
 - **Description:** Exposes metrics in Prometheus format for monitoring and analytics.
 - **Important:** This endpoint is **only accessible from the backend** and is not integrated into the frontend.
+
+---
+
+## Features
+
+### Error Handling
+
+- **503 Service Unavailable:** The system returns a proper error response when a service is temporarily unavailable.
+- **504 Gateway Timeout:** The system gracefully handles and logs timeout errors when the backend doesn’t receive a timely response from an external service.
+
+### Accessibility Checks
+
+- Validates hyperlinks for accessibility by:
+  - Checking for missing labels (e.g., `<a>` elements without `aria-label` or text content).
+  - Detecting invalid or inaccessible `href` attributes.
+
+### Concurrency with Go Routines
+
+- Go routines are used in the backend to handle multiple tasks concurrently, improving performance for webpage analysis.
+
+### Logging
+
+- Logs all significant events (e.g., API access, errors, and successes) to a file named `webpage-analyzer.log`. This file is dynamically created and ignored in version control (Git).
+- Logs are formatted in JSON for easier parsing and integration with monitoring tools.
 
 ---
 
@@ -169,11 +197,43 @@ networks:
 
 ---
 
-## Troubleshooting
+## Challenges Faced and Solutions
 
-- **Backend API not accessible:** Ensure the backend container is running and listening on port `8080`.
-- **Frontend not accessible:** Ensure the frontend container is running and Nginx is serving content on port `3000`.
-- **Docker networking issues:** Try restarting Docker or clearing stale containers with `docker-compose down`.
+### 1. **Error Handling**
+   - **Challenge:** Properly handling 503 and 504 errors for better user feedback.
+   - **Solution:** Enhanced the backend to detect and return appropriate HTTP status codes with descriptive error messages.
+
+### 2. **Concurrency with Go Routines**
+   - **Challenge:** Optimizing the performance of webpage analysis tasks.
+   - **Solution:** Used Go routines to process tasks (e.g., analyzing links, extracting headings) concurrently, reducing response time.
+
+### 3. **Logging System**
+   - **Challenge:** Centralizing logs and ensuring they are easily traceable.
+   - **Solution:** Implemented JSON-formatted logs with file-based storage, ignored by Git.
+
+### 4. **Accessibility Checks**
+   - **Challenge:** Ensuring hyperlinks are accessible.
+   - **Solution:** Added validation for missing labels and invalid `href` attributes during webpage analysis.
+
+---
+
+## Possible Improvements
+
+1. **Enhanced Health Check API:**
+   - Include real-time dependency status (e.g., database, external APIs).
+   - Add dynamic metadata injection for version, build time, and Git commit.
+
+2. **Caching Mechanism:**
+   - Use a caching layer (e.g., Redis) to store results of frequently analyzed pages.
+
+3. **Monitoring and Alerts:**
+   - Integrate with monitoring tools like Prometheus and Grafana for visualizing metrics and setting up alerts.
+
+4. **Frontend Enhancements:**
+   - Add a dashboard for visualizing analysis results and logs in real time.
+
+5. **Improved Accessibility:**
+   - Extend the accessibility checks to include ARIA roles, color contrast checks, and keyboard navigation validation.
 
 ---
 
