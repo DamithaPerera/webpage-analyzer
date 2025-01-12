@@ -26,7 +26,7 @@ func main() {
      m.SetMetricPath("/metrics") // Expose metrics at /metrics endpoint
      m.Use(r)
 
-    r.GET("/", handlers.HomePage)
+    r.GET("/health", handlers.HealthCheck)
     r.POST("/analyze", handlers.AnalyzePage)
 
     if err := r.Run(":8080"); err != nil {

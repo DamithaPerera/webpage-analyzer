@@ -10,10 +10,11 @@ import (
 )
 
 // HomePage handles the root endpoint and provides a welcome message.
-func HomePage(c *gin.Context) {
-    utils.Logger.Info("HomePage endpoint accessed")
+func HealthCheck(c *gin.Context) {
+    utils.Logger.Info("HealthCheck endpoint accessed")
     c.JSON(http.StatusOK, gin.H{
-        "message": "Welcome to the Web Page Analyzer. Use POST /analyze to analyze a webpage.",
+        "status":  "OK",
+        "message": "Web Page Analyzer service is running.",
     })
 }
 

@@ -14,10 +14,10 @@ func TestHomePage(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 
-	HomePage(c)
+	HealthCheck(c)
 
 	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Contains(t, w.Body.String(), "Welcome to the Web Page Analyzer")
+	assert.Contains(t, w.Body.String(), "Web Page Analyzer service is running.")
 }
 
 func TestAnalyzePage_ValidInput(t *testing.T) {
