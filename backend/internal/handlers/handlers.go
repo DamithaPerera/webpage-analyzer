@@ -41,6 +41,16 @@ func AnalyzePage(c *gin.Context) {
     client := &services.DefaultHTTPClient{}
     result, err := analyzer.Analyze(req.URL, client)
     if err != nil {
+        if err.Error() == "503 Service Unavailable: The server is currently unable to handle the request" {
+            c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+            return
+        }
+
+        if err.Error() == "504 Gateway Timeout: The server, while acting as a gateway, did not receive a timely response" {
+            c.JSON(http.StatusGatewayTimeout, gin.H{"error": err.Error()})
+            return
+        }
+
         utils.Logger.Error("Error analyzing URL: ", err)
         c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
         return

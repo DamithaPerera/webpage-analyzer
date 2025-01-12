@@ -13,19 +13,27 @@ import (
 // Analyze fetches and analyzes a webpage, returning its metadata and Go routines to process tasks concurrently.
 func Analyze(url string, client services.HTTPClient) (*models.AnalysisResult, error) {
 	resp, err := client.Get(url)
-	if err != nil {
-		return nil, errors.New("unable to fetch the URL")
-	}
-	defer resp.Body.Close()
+    if err != nil {
+        return nil, errors.New("unable to fetch the URL")
+    }
+    defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, errors.New("non-success HTTP status received: " + http.StatusText(resp.StatusCode))
-	}
+    if resp.StatusCode == http.StatusServiceUnavailable {
+        return nil, errors.New("503 Service Unavailable: The server is currently unable to handle the request")
+    }
 
-	doc, err := html.Parse(resp.Body)
-	if err != nil {
-		return nil, errors.New("error parsing HTML document")
-	}
+    if resp.StatusCode == http.StatusGatewayTimeout {
+        return nil, errors.New("504 Gateway Timeout: The server, while acting as a gateway, did not receive a timely response")
+    }
+
+    if resp.StatusCode != http.StatusOK {
+        return nil, errors.New("non-success HTTP status received: " + http.StatusText(resp.StatusCode))
+    }
+
+    doc, err := html.Parse(resp.Body)
+    if err != nil {
+        return nil, errors.New("error parsing HTML document")
+    }
 
 	result := &models.AnalysisResult{}
 	done := make(chan error, 5)

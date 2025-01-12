@@ -65,4 +65,3 @@ func TestAnalyzePage_ErrorFromAnalyzer(t *testing.T) {
     expectedResponse := `{"error":"unable to fetch the URL"}`
     assert.JSONEq(t, expectedResponse, w.Body.String(), "Expected error response does not match")
 }
-

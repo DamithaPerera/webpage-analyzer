@@ -170,3 +170,29 @@ func TestAnalyze_AccessibilityChecks(t *testing.T) {
 
     assert.Equal(t, 2, result.MissingLabels, "Expected 2 links missing labels")
 }
+
+func TestAnalyze_503And504Errors(t *testing.T) {
+    tests := []struct {
+        name        string
+        statusCode  int
+        expectedErr string
+    }{
+        {"Service Unavailable (503)", http.StatusServiceUnavailable, "503 Service Unavailable: The server is currently unable to handle the request"},
+        {"Gateway Timeout (504)", http.StatusGatewayTimeout, "504 Gateway Timeout: The server, while acting as a gateway, did not receive a timely response"},
+    }
+
+    for _, test := range tests {
+        t.Run(test.name, func(t *testing.T) {
+            client := &MockHTTPClient{
+                Response: &http.Response{
+                    StatusCode: test.statusCode,
+                    Body:       io.NopCloser(strings.NewReader("")),
+                },
+            }
+
+            _, err := Analyze("http://example.com", client)
+            assert.NotNil(t, err)
+            assert.Contains(t, err.Error(), test.expectedErr)
+        })
+    }
+}
