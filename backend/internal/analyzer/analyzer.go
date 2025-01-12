@@ -10,7 +10,7 @@ import (
 	"golang.org/x/net/html"
 )
 
-// Analyze fetches and analyzes a webpage, returning its metadata.
+// Analyze fetches and analyzes a webpage, returning its metadata and Go routines to process tasks concurrently.
 func Analyze(url string, client services.HTTPClient) (*models.AnalysisResult, error) {
 	resp, err := client.Get(url)
 	if err != nil {
@@ -27,16 +27,38 @@ func Analyze(url string, client services.HTTPClient) (*models.AnalysisResult, er
 		return nil, errors.New("error parsing HTML document")
 	}
 
-	result := &models.AnalysisResult{
-		HTMLVersion: utils.DetectHTMLVersion(doc),
-		Title:       utils.ExtractTitle(doc),
-		Headings:    utils.CountHeadings(doc),
-	}
+	result := &models.AnalysisResult{}
+	done := make(chan error, 4)
 
-	internal, external, inaccessible := utils.AnalyzeLinks(url, doc)
-	result.InternalLinks = internal
-	result.ExternalLinks = external
-	result.InaccessibleLinks = inaccessible
+	// Process tasks concurrently using Go routines
+	go func() {
+		result.HTMLVersion = utils.DetectHTMLVersion(doc)
+		done <- nil
+	}()
+
+	go func() {
+		result.Title = utils.ExtractTitle(doc)
+		done <- nil
+	}()
+
+	go func() {
+		result.Headings = utils.CountHeadings(doc)
+		done <- nil
+	}()
+
+	go func() {
+		internal, external, inaccessible := utils.AnalyzeLinks(url, doc)
+		result.InternalLinks = internal
+		result.ExternalLinks = external
+		result.InaccessibleLinks = inaccessible
+		done <- nil
+	}()
+
+	for i := 0; i < 4; i++ {
+		if err := <-done; err != nil {
+			return nil, err
+		}
+	}
 
 	result.HasLoginForm = utils.CheckForLoginForm(doc)
 

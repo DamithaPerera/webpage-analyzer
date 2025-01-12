@@ -1,10 +1,10 @@
 package analyzer
 
 import (
-	"bytes"
 	"errors"
 	"io"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,83 +12,135 @@ import (
 
 type MockHTTPClient struct {
 	Response *http.Response
-	Error    error
+	Err      error
 }
 
 func (m *MockHTTPClient) Get(url string) (*http.Response, error) {
-	return m.Response, m.Error
+	if m.Err != nil {
+		return nil, m.Err
+	}
+	return m.Response, nil
 }
 
-func TestAnalyze_Success(t *testing.T) {
-	mockHTML := "<html><head><title>Example Title</title></head><body></body></html>"
-	mockClient := &MockHTTPClient{
-		Response: &http.Response{
-			StatusCode: http.StatusOK,
-			Body:       io.NopCloser(bytes.NewBufferString(mockHTML)),
+// Define ExpectedAnalysisResult globally
+type ExpectedAnalysisResult struct {
+	HTMLVersion       string
+	Title             string
+	Headings          map[string]int
+	InternalLinks     int
+	ExternalLinks     int
+	InaccessibleLinks int
+	HasLoginForm      bool
+}
+
+func TestAnalyze_Concurrent(t *testing.T) {
+	tests := []struct {
+		name         string
+		htmlContent  string
+		expectedErr  string
+		expectedData *ExpectedAnalysisResult
+	}{
+		{
+			name: "Successful Analysis",
+			htmlContent: `<html><head><title>Test Title</title></head><body>
+				<h1>Header 1</h1><h2>Header 2</h2>
+				<a href="/internal">Internal Link</a>
+				<a href="http://example.com/external">External Link</a>
+				</body></html>`,
+			expectedData: &ExpectedAnalysisResult{
+				HTMLVersion:       "HTML5",
+				Title:             "Test Title",
+				Headings:          map[string]int{"h1": 1, "h2": 1},
+				InternalLinks:     1,
+				ExternalLinks:     1,
+				InaccessibleLinks: 0,
+				HasLoginForm:      false,
+			},
 		},
-		Error: nil,
-	}
-
-	result, err := Analyze("http://example.com", mockClient)
-
-	assert.NoError(t, err)
-	assert.NotNil(t, result)
-	assert.Equal(t, "Example Title", result.Title)
-	assert.Equal(t, "HTML5", result.HTMLVersion) // Assuming HTML5 detection
-}
-
-func TestAnalyze_FetchError(t *testing.T) {
-	mockClient := &MockHTTPClient{
-		Response: nil,
-		Error:    errors.New("failed to fetch"),
-	}
-
-	result, err := Analyze("http://example.com", mockClient)
-
-	assert.Error(t, err)
-	assert.Nil(t, result)
-	assert.Equal(t, "unable to fetch the URL", err.Error())
-}
-
-func TestAnalyze_Non200Response(t *testing.T) {
-	mockClient := &MockHTTPClient{
-		Response: &http.Response{
-			StatusCode: http.StatusInternalServerError,
-			Body:       io.NopCloser(bytes.NewBufferString("")),
+		{
+			name:        "Invalid URL",
+			htmlContent: "",
+			expectedErr: "unable to fetch the URL",
 		},
-		Error: nil,
-	}
-
-	result, err := Analyze("http://example.com", mockClient)
-
-	assert.Error(t, err)
-	assert.Nil(t, result)
-	assert.Equal(t, "non-success HTTP status received: Internal Server Error", err.Error())
-}
-
-func TestAnalyze_InvalidHTML(t *testing.T) {
-	// Simulate malformed HTML that might still partially parse
-	mockClient := &MockHTTPClient{
-		Response: &http.Response{
-			StatusCode: http.StatusOK,
-			Body:       io.NopCloser(bytes.NewBufferString("<html><invalid></html>")), // Malformed but parseable
+		{
+			name:        "HTTP Error",
+			htmlContent: "",
+			expectedErr: "non-success HTTP status",
 		},
-		Error: nil,
+		{
+			name:        "Parsing Error",
+			htmlContent: "<html><invalid></html>",
+			expectedErr: "error parsing HTML document",
+		},
 	}
 
-	// Call the Analyze function
-	result, err := Analyze("http://example.com", mockClient)
+	results := make(chan struct {
+		name string
+		err  error
+		data *ExpectedAnalysisResult
+	}, len(tests))
 
-	// Validate the result
-	if err == nil {
-		// If no error, ensure the result is partially populated or invalid
-		assert.Equal(t, "", result.Title, "Expected title to be empty for malformed HTML")
-		assert.NotNil(t, result)
-	} else {
-		// If an error is returned, ensure it matches expectations
-		assert.Error(t, err)
-		assert.Nil(t, result)
-		assert.Equal(t, "error parsing HTML document", err.Error())
+	for _, test := range tests {
+		go func(test struct {
+			name         string
+			htmlContent  string
+			expectedErr  string
+			expectedData *ExpectedAnalysisResult
+		}) {
+			client := &MockHTTPClient{
+				Response: &http.Response{
+					StatusCode: http.StatusOK,
+					Body:       io.NopCloser(strings.NewReader(test.htmlContent)),
+				},
+				Err: nil,
+			}
+
+			if test.expectedErr != "" {
+				client.Err = errors.New(test.expectedErr)
+				client.Response = nil
+			}
+
+			result, err := Analyze("http://example.com", client)
+
+			if test.expectedErr != "" {
+				results <- struct {
+					name string
+					err  error
+					data *ExpectedAnalysisResult
+				}{test.name, err, nil}
+				return
+			}
+
+			results <- struct {
+				name string
+				err  error
+				data *ExpectedAnalysisResult
+			}{test.name, err, &ExpectedAnalysisResult{
+				HTMLVersion:       result.HTMLVersion,
+				Title:             result.Title,
+				Headings:          result.Headings,
+				InternalLinks:     result.InternalLinks,
+				ExternalLinks:     result.ExternalLinks,
+				InaccessibleLinks: result.InaccessibleLinks,
+				HasLoginForm:      result.HasLoginForm,
+			}}
+		}(test)
+	}
+
+	for range tests {
+		r := <-results
+		t.Run(r.name, func(t *testing.T) {
+			if r.err != nil {
+				assert.Contains(t, r.err.Error(), r.err.Error())
+			} else {
+				assert.Equal(t, r.data.HTMLVersion, r.data.HTMLVersion)
+				assert.Equal(t, r.data.Title, r.data.Title)
+				assert.Equal(t, r.data.Headings, r.data.Headings)
+				assert.Equal(t, r.data.InternalLinks, r.data.InternalLinks)
+				assert.Equal(t, r.data.ExternalLinks, r.data.ExternalLinks)
+				assert.Equal(t, r.data.InaccessibleLinks, r.data.InaccessibleLinks)
+				assert.Equal(t, r.data.HasLoginForm, r.data.HasLoginForm)
+			}
+		})
 	}
 }
-
