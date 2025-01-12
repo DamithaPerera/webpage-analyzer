@@ -9,4 +9,6 @@ type AnalysisResult struct {
 	ExternalLinks     int            `json:"external_links"`
 	InaccessibleLinks int            `json:"inaccessible_links"`
 	HasLoginForm      bool           `json:"has_login_form"`
+	MissingLabels     int            `json:"missing_labels"`
+	InvalidHref       int            `json:"invalid_href"`
 }

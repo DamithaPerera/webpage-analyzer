@@ -28,7 +28,7 @@ func Analyze(url string, client services.HTTPClient) (*models.AnalysisResult, er
 	}
 
 	result := &models.AnalysisResult{}
-	done := make(chan error, 4)
+	done := make(chan error, 5)
 
 	// Process tasks concurrently using Go routines
 	go func() {
@@ -54,7 +54,12 @@ func Analyze(url string, client services.HTTPClient) (*models.AnalysisResult, er
 		done <- nil
 	}()
 
-	for i := 0; i < 4; i++ {
+	go func() {
+		result.MissingLabels, result.InvalidHref = utils.AnalyzeLinksAccessibility(doc)
+		done <- nil
+	}()
+
+	for i := 0; i < 5; i++ {
 		if err := <-done; err != nil {
 			return nil, err
 		}

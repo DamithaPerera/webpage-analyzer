@@ -144,3 +144,29 @@ func TestAnalyze_Concurrent(t *testing.T) {
 		})
 	}
 }
+
+func TestAnalyze_AccessibilityChecks(t *testing.T) {
+    htmlContent := `
+    <html>
+        <body>
+            <a href="#">No Label</a>
+            <a href="#">Another Link</a>
+            <a href="invalid-url"></a>
+            <a></a>
+        </body>
+    </html>`
+
+    client := &MockHTTPClient{
+        Response: &http.Response{
+            StatusCode: http.StatusOK,
+            Body:       io.NopCloser(strings.NewReader(htmlContent)),
+        },
+    }
+
+    result, err := Analyze("http://example.com", client)
+    if err != nil {
+        t.Fatalf("Expected no error, got %v", err)
+    }
+
+    assert.Equal(t, 2, result.MissingLabels, "Expected 2 links missing labels")
+}

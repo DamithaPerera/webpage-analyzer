@@ -2,7 +2,7 @@ package utils
 
 import (
 	"net/url"
-
+	"strings"
 	"golang.org/x/net/html"
 )
 
@@ -93,4 +93,53 @@ func CheckForLoginForm(doc *html.Node) bool {
 	}
 	checkForm(doc)
 	return found
+}
+
+// AnalyzeLinksAccessibility checks links for missing labels and invalid hrefs.
+func AnalyzeLinksAccessibility(doc *html.Node) (missingLabels, invalidHref int) {
+    missingLabels, invalidHref = 0, 0
+
+    var traverse func(*html.Node)
+    traverse = func(n *html.Node) {
+        if n.Type == html.ElementNode && n.Data == "a" {
+            hasLabel := false
+            hasHref := false
+
+            for _, attr := range n.Attr {
+                if attr.Key == "aria-label" || attr.Key == "title" {
+                    if attr.Val != "" {
+                        hasLabel = true
+                    }
+                }
+                if attr.Key == "href" {
+                    hasHref = true
+                    _, err := url.ParseRequestURI(attr.Val)
+                    if err != nil || attr.Val == "" {
+                        invalidHref++
+                    }
+                }
+            }
+
+            if n.FirstChild != nil && n.FirstChild.Type == html.TextNode {
+                if strings.TrimSpace(n.FirstChild.Data) != "" {
+                    hasLabel = true
+                }
+            }
+
+            if !hasLabel {
+                missingLabels++
+            }
+
+            if !hasHref {
+                invalidHref++
+            }
+        }
+
+        for c := n.FirstChild; c != nil; c = c.NextSibling {
+            traverse(c)
+        }
+    }
+
+    traverse(doc)
+    return missingLabels, invalidHref
 }
